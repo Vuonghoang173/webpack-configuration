@@ -1,44 +1,101 @@
 const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const CleanWebpackPlugin = require('clean-webpack-plugin');
 const webpack = require('webpack');
-const devMode = process.env.NODE_ENV !== 'production'
+const CleanWebpackPlugin = require('clean-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const HtmlBeautifyPlugin = require('html-beautify-webpack-plugin');
+const autoprefixer = require('autoprefixer');
+const isDevelopment = process.env.NODE_ENV !== 'production'
 
 module.exports = {
   entry: {
     app: './src/app.js'
   },
-  devtool: 'source-map',
+  devtool: isDevelopment && 'source-map',
   optimization: {
     minimize: false
   },
   devServer: {
+    host: '0.0.0.0',
+    port: 8080,
     contentBase: path.join(__dirname, 'dist'),
     hot: true,
+    open: true,
     before(_, server) {
-      server._watch(`./src/*.html`)
+      server._watch(`./src/**/*.handlebars`)
     }
   },
   plugins: [
     new CleanWebpackPlugin(),
-    new HtmlWebpackPlugin({ template: './src/index.html' }),
+    new webpack.LoaderOptionsPlugin({
+      options: {
+        handlebarsLoader: {}
+      }
+    }),
     new MiniCssExtractPlugin({
-      filename: devMode ? '[name].bundle.css' : '[name].bundle.[hash].css',
-      chunkFilename: devMode ? '[id].bundle.css' : '[id].bundle.[hash].css'
+      filename: isDevelopment ? './css/[name].css' : './css/[name]_[hash].css',
+      chunkFilename: isDevelopment ? '[id].css' : '[id]_[hash].css'
+    }),
+    new HtmlWebpackPlugin({ 
+      template: './src/index.handlebars',
+      minify: !isDevelopment && {
+        html5: true,
+        collapseWhitespace: true,
+        caseSensitive: true,
+        removeComments: true
+      }
+    }),
+    new HtmlBeautifyPlugin({
+      config: {
+        html: {
+            end_with_newline: true,
+            indent_size: 2,
+            indent_with_tabs: true,
+            indent_inner_html: true,
+            preserve_newlines: true,
+            unformatted: ['p', 'i', 'b', 'span']
+        }
+      },
+      replace: [ ' type="text/javascript"' ]
     }),
     new webpack.HotModuleReplacementPlugin()
   ],
   module: {
     rules: [
       {
-        test: /\.scss$/,
+        test: /\.(scss|css)$/,
         exclude: /(node_modules|bower_components)/,
         use: [
-          devMode ? 'style-loader' : MiniCssExtractPlugin.loader,
-          'css-loader?sourceMap',
-          'postcss-loader?sourceMap',
-          'sass-loader?sourceMap'
+          {
+            loader: isDevelopment ? 'style-loader' : MiniCssExtractPlugin.loader,
+            options: isDevelopment ? {} : {
+              publicPath: '../'
+            }
+          },
+          {
+            loader: 'css-loader',
+            options: {
+              sourceMap: isDevelopment
+            }
+          },
+          {
+            loader: 'postcss-loader',
+            options: {
+              autoprefixer: {
+                browsers: ['last 2 versions']
+              },
+              sourceMap: isDevelopment,
+              plugins: () => [
+                autoprefixer
+              ]
+            }
+          },
+          {
+            loader: 'sass-loader',
+            options: {
+              sourceMap: isDevelopment
+            } 
+          }
         ]
       },
       {
@@ -50,11 +107,28 @@ module.exports = {
             presets: ['@babel/preset-env']
           }
         }
+      },
+      {
+        test: /\.(jpg|png|gif)$/,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              name: '[name].[ext]',
+              outputPath: 'img/',
+              useRelativePath: true
+            }
+          }
+        ]
+      },
+      {
+        test: /\.handlebars$/,
+        loader: 'handlebars-loader'
       }
     ]
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: devMode ? '[name].bundle.js' : '[name].bundle.[hash].js'
+    filename: isDevelopment ? './js/[name].js' : './js/[name]_[hash].js'
   }
 };
