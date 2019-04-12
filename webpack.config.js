@@ -4,6 +4,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const HtmlBeautifyPlugin = require('html-beautify-webpack-plugin');
 const autoprefixer = require('autoprefixer');
+const CompressionPLugin = require('compression-webpack-plugin');
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 module.exports = {
@@ -55,6 +56,9 @@ module.exports = {
         }
       },
       replace: [ ' type="text/javascript"' ]
+    }),
+    new CompressionPLugin({
+      test: /\.(js|css|html|svg|json)$/
     }),
     new webpack.HotModuleReplacementPlugin()
   ],
